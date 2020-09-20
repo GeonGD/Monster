@@ -1,0 +1,36 @@
+{
+  "ver": "2.3.5",
+  "uuid": "f58b97b6-cb57-40a3-8474-c455b709da32",
+  "type": "sprite",
+  "wrapMode": "clamp",
+  "filterMode": "bilinear",
+  "premultiplyAlpha": false,
+  "genMipmaps": false,
+  "packable": true,
+  "width": 81,
+  "height": 117,
+  "platformSettings": {},
+  "subMetas": {
+    "ani_enemy_die_6": {
+      "ver": "1.0.4",
+      "uuid": "73806c92-1bc2-46bf-8be7-eb8ef84445a5",
+      "rawTextureUuid": "f58b97b6-cb57-40a3-8474-c455b709da32",
+      "trimType": "auto",
+      "trimThreshold": 1,
+      "rotated": false,
+      "offsetX": 0,
+      "offsetY": 0,
+      "trimX": 0,
+      "trimY": 0,
+      "width": 81,
+      "height": 117,
+      "rawWidth": 81,
+      "rawHeight": 117,
+      "borderTop": 0,
+      "borderBottom": 0,
+      "borderLeft": 0,
+      "borderRight": 0,
+      "subMetas": {}
+    }
+  }
+}
