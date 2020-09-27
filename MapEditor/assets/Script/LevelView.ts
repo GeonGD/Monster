@@ -1,4 +1,5 @@
 import BlockGroup from "./BlockGroup";
+import DataManager from "./DataManager";
 
 const { ccclass, property } = cc._decorator;
 
@@ -42,8 +43,9 @@ export default class LevelView extends cc.Component {
     }
   }
 
+  // 读取关卡二进制文件
   private _inputMapData(level: number) {
-    cc.resources.load("MapData/map", (err, data: any) => {
+    cc.resources.load(`MapData/level${level}`, (err, data: any) => {
       if (err) {
         cc.error(err.message || err);
         return;
@@ -57,6 +59,7 @@ export default class LevelView extends cc.Component {
 
       let str = String.fromCharCode.apply(null, mapData);
       let res = JSON.parse(str);
+      DataManager.Instance.currentLevel = level;
       this._blocGroup.UpdateMapData(res)
     });
     

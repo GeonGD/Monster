@@ -1,4 +1,8 @@
+import Controller from "./Controller";
+import DataManager from "./DataManager";
 import LevelView from "./LevelView";
+import MapEditor from "./MapEditor";
+import RouteEditor from "./RouteEditor";
 
 declare let require;
 const { ccclass, property } = cc._decorator;
@@ -15,8 +19,17 @@ export default class BlockGroup extends cc.Component {
     @property(cc.Node)
     BlockMap: cc.Node;
 
+    @property(cc.Node)
+    RouteMap: cc.Node;
+
+    @property(cc.Prefab)
+    RoutePrefab: cc.Prefab;
+
     @property(LevelView)
     LevelViewController: LevelView;
+
+    @property(Controller)
+    ToggleController: Controller
 
     /** 选择素材相关 */
     private _modelItem: cc.Node[] = [];     // 当前可用关卡元素
@@ -36,11 +49,22 @@ export default class BlockGroup extends cc.Component {
     ]
     private _mapBlockSprite: cc.Node[][] = [];  // 地图快对象数组
 
+    /** 事件模式控制器 */
+    private _mapEditor: MapEditor;
+    private _routeEditor: RouteEditor;
+
     start() {
         cc.macro.ENABLE_MULTI_TOUCH = false;
         this.LevelViewController.init(this);
 
         this.MoveSprite.zIndex = 100;
+
+        this._mapEditor = this.node.getComponent(MapEditor);
+        this._routeEditor = this.node.getComponent(RouteEditor);
+
+        this._mapEditor.init(this);
+        this._routeEditor.init(this);
+
         this._eachSpriteAtlas();
         this._createBlockMap(this._defaultMapData);
     }
@@ -50,6 +74,33 @@ export default class BlockGroup extends cc.Component {
         this.node.on(cc.Node.EventType.TOUCH_MOVE, this._touchMoveHandle, this);
         this.node.on(cc.Node.EventType.TOUCH_END, this._touchEndHandle, this);
         this.node.on(cc.Node.EventType.TOUCH_CANCEL, this._touchEndHandle, this);
+    }
+
+    // touch start
+    private _touchStartandle(event: cc.Touch): void {
+        if (this.ToggleController.isMapEdit) {
+            this._mapEditor.touchStartandle(event);
+        } else if (this.ToggleController.isRouteEdit) {
+            this._routeEditor.touchStartandle(event);
+        }
+    }
+
+    // touch move
+    private _touchMoveHandle(event: cc.Touch): void {
+        if (this.ToggleController.isMapEdit) {
+            this._mapEditor.touchMoveHandle(event);
+        } else if (this.ToggleController.isRouteEdit) {
+            this._routeEditor.touchMoveHandle(event);
+        }
+    }
+
+    // touch end || cancel
+    private _touchEndHandle(event: cc.Touch): void {
+        if (this.ToggleController.isMapEdit) {
+            this._mapEditor.touchEndHandle(event);
+        } else if (this.ToggleController.isRouteEdit) {
+            this._routeEditor.touchEndHandle(event);
+        }
     }
 
     // 绘制素材图
@@ -97,6 +148,7 @@ export default class BlockGroup extends cc.Component {
                 // 添加sprite脚本
                 let spriteCom: cc.Sprite = node.addComponent(cc.Sprite);
                 spriteCom.spriteFrame = this.MapSpriteAtlas[this._selectSpriteAtlas].getSpriteFrame(columnMap[i].toString());
+                spriteCom.selfIndex = cc.v2(i, index);
                 // 计算节点坐标
                 node.x = i * this._spriteWidth + this._spriteWidth / 2;
                 node.y = -index * this._spriteWidth - this._spriteWidth / 2;
@@ -112,7 +164,7 @@ export default class BlockGroup extends cc.Component {
     }
 
     // 获取当前点击图片精灵
-    private _getCurSelectSprite(touchPos: cc.Vec2): cc.SpriteFrame {
+    public getCurSelectSprite(touchPos: cc.Vec2): cc.SpriteFrame {
         let x: number = Math.floor(touchPos.x / this._spriteWidth);
         let y: number = Math.floor(Math.abs(touchPos.y) / this._spriteWidth);
         let itemIndex: number = y * this._columnCount + x;
@@ -126,7 +178,7 @@ export default class BlockGroup extends cc.Component {
     }
 
     // 移动结束放置元素
-    private _getEndSelectSprite(endPos: cc.Vec2): cc.Sprite {
+    public getEndSelectSprite(endPos: cc.Vec2): cc.Sprite {
         let radius: number = this._spriteWidth / 2;
         let result: cc.Sprite = null;
         this._mapBlockSprite.forEach((columnMap: cc.Node[], index: number) => {
@@ -139,34 +191,19 @@ export default class BlockGroup extends cc.Component {
             }
         })
         return result;
-
     }
 
-    // touch start
-    private _touchStartandle(event: cc.Touch): void {
-        let touchPos: cc.Vec2 = this.node.convertToNodeSpaceAR(event.getLocation());
-        let spriteFrame = this._getCurSelectSprite(touchPos);
-        if (spriteFrame != null) {
-            this.MoveSprite.active = true;
-            this.MoveSprite.getComponent(cc.Sprite).spriteFrame = spriteFrame;
-            this.MoveSprite.setPosition(touchPos);
-        }
-    }
+    public setRouteMap() {
+        this.RouteMap.removeAllChildren();
+        DataManager.Instance.routeData.forEach((route: cc.Vec2, index: number) => {
+            let routeNode: cc.Node = cc.instantiate(this.RoutePrefab);
+            this.RouteMap.addChild(routeNode);
+            routeNode.x = route.x * this._spriteWidth + this._spriteWidth / 2;
+            routeNode.y = -route.y * this._spriteWidth - this._spriteWidth / 2;
+            cc.find("Index", routeNode).getComponent(cc.Label).string = (index + 1).toString();
+        })
 
-    // touch move
-    private _touchMoveHandle(event: cc.Touch): void {
-        let movePos: cc.Vec2 = this.node.convertToNodeSpaceAR(event.getLocation());
-        this.MoveSprite.setPosition(movePos);
-    }
 
-    // touch end || cancel
-    private _touchEndHandle(event: cc.Touch): void {
-        let endPos: cc.Vec2 = event.getLocation();
-        let mapSprite: cc.Sprite = this._getEndSelectSprite(endPos);
-        if (mapSprite != null && this.MoveSprite.active) {
-            mapSprite.spriteFrame = this.MoveSprite.getComponent(cc.Sprite).spriteFrame;
-        }
-        this.MoveSprite.active = false;
     }
 
     // 导出地图
@@ -180,7 +217,8 @@ export default class BlockGroup extends cc.Component {
         })
         let blob = new Blob([JSON.stringify(outputData)]);
         const saveAs = require("./Libs/FileSave.js");
-        saveAs(blob, "map.bin");
+
+        saveAs(blob, `level${DataManager.Instance.currentLevel}.bin`);
     }
 
     // 导入地图
